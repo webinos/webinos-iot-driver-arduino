@@ -1,0 +1,26 @@
+{ "name": "webinos-driver-arduino"
+, "publishConfig": { "tag": "alpha" }
+, "description": "Arduino Drivers"
+, "keywords": [ "webinos", "arduino", "driver"]
+, "version": "0.0.1"
+, "homepage": "http://webinos.org/"
+, "author": "Giuseppe La Torre <giuseppe.latorre@dieei.unict.it>"
+, "repository":
+  { "type": "git"
+  , "url": "https://github.com/webinos/webinos-driver-arduino.git"
+  }
+, "bugs":
+  { "email": "webinos-wp4-ml@fokus.fraunhofer.de"
+  , "url": ""
+  }
+, "directories": { "lib": "./lib"
+                 }
+, "main": "./lib/driverInterface.js"
+, "dependencies":
+  {
+	"serialport": "x.x.x"
+  }
+, "bundleDependencies":
+  [
+  ]
+}
