@@ -15,10 +15,9 @@
   }
 , "directories": { "lib": "./lib"
                  }
-, "main": "./lib/driverInterface.js"
+, "main": "./lib/driverHandle.js"
 , "dependencies":
   {
-	"serialport": "x.x.x"
   }
 , "bundleDependencies":
   [
