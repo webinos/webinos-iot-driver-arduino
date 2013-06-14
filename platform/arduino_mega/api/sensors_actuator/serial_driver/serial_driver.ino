@@ -376,12 +376,6 @@ void loop(){
             id[j] = '\0';
             dat[z] = '\0';   
             s = "";
-            Serial.print("cmd: ");
-            Serial.println(cmd);
-            Serial.print("id: ");
-            Serial.println(id);
-            Serial.print("dat: ");
-            Serial.println(dat);
         }
         else
             s += c;
@@ -420,12 +414,13 @@ void loop(){
         else if(strcmp(cmd, CONFIGURE) == 0){    
             //configuring element eid
             String tmp = dat;
+            char cfg_sep = ':';
             int last_sep_pos=0;
             String s;
-            int sep_pos = tmp.indexOf(sep);
+            int sep_pos = tmp.indexOf(cfg_sep);
             s = tmp.substring(0, sep_pos);                    
             last_sep_pos = sep_pos + 1;
-            sep_pos = tmp.indexOf(sep, last_sep_pos);
+            sep_pos = tmp.indexOf(cfg_sep, last_sep_pos);
             s = tmp.substring(last_sep_pos, sep_pos);
             for(int i=0; i<num_elements; i++)
                 if(strcmp(elements[i]->id, eid) == 0)
