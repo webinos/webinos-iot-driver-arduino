@@ -223,19 +223,17 @@ void getInfoFromSD(boolean check_for_elements){
                                 if(!isActuator){
                                     Serial.print("\"version\":\"");
                                     Serial.print(field);
-//                                    Serial.print("\",");
-                                    Serial.print("\"}}");
+                                    Serial.print("\",");
+//                                    Serial.print("\"}}");
                                 }
-                            }
-/*                            
+                            }                            
                             else if(counter == 11){  // SENSOR FUNCTION
                                 if(!isActuator){
                                     Serial.print("\"convfunc\":\"");
                                     Serial.print(field);
                                     Serial.print("\"}}");                                    
                                 }
-                            }
- */                           
+                            }                           
                             counter++;
                             sep_pos = i+1;
                         }
