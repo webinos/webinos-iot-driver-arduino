@@ -18,6 +18,7 @@
 , "main": "./lib/driverHandle.js"
 , "dependencies":
   {
+    "sandbox": "git://github.com/glatorre/sandbox.git"
   }
 , "bundleDependencies":
   [
