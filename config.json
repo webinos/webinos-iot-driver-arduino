@@ -9,13 +9,13 @@
 					{
 						"name" : "usb1",
 						"type" : "usb",
-						"port" : "/dev/cu.usbmodemfd121",
+						"port" : "/dev/cu.usbmodemfa131",
 						"rate" : 9600
 					},
 					{
 						"name" : "zigbee1",
 						"type" : "zigbee",
-						"port" : "...",
+						"port" : "/dev/cu.usbserial-A40105XP",
 						"rate" : 9600
 					}					
 				]
