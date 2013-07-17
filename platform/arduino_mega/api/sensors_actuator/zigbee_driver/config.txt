@@ -11,6 +11,6 @@ ELEMENT 	000        $ 0  $ 0  $ 0   $ 0.1      $ 500      $ 0.02  $ 0.001      $
 ELEMENT 	001        $ 0  $ 0  $ 1   $ 0.1      $ 500      $ 0.02  $ 0.001      $ proximity   $ vend_prox  $ 1.0     $ f(x) = (x<10) ? x : ((x==10) ? 2*x : 3*x)
 
 # One actuator
-#		ID_ELEMENT $ SA $ AD $ PIN $ TYPE     $ RANGE $ VENDOR      $ VERSION
-ELEMENT		002        $ 1  $ 1  $ 13  $ switch   $ 0-1   $ vend_switch $ 1.0
+#			ID_ELEMENT $ SA $ AD $ PIN $ TYPE     $ RANGE $ VENDOR      $ VERSION
+ELEMENT		002        $ 1  $ 1  $ 6   $ switch   $ 0-1   $ vend_switch $ 1.0
 #end_configuration
