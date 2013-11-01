@@ -58,6 +58,7 @@ int    num_elements=0;
 boolean boardconnected = false;
 boolean sd_ready = false;
 boolean elements_ready = false;
+char sep = '$';
 
 void sayHello(){
     client.print("GET /newboard?jsondata={\"id\":\"");
@@ -138,7 +139,7 @@ void getInfoFromSD(boolean check_for_elements){
                     String tmp = s.substring(7);
                     String field;
                     int counter=0;
-                    int colon_pos = 0;
+                    int sep_pos = 0;
                     if(first_element){
                         first_element=false;
                         client.print("[");
@@ -149,8 +150,8 @@ void getInfoFromSD(boolean check_for_elements){
                     
                     bool isActuator = false;
                     for(int i=0; i<tmp.length(); i++){
-                        if(tmp.charAt(i) == ':' || tmp.charAt(i) == '\n'){
-                            field = tmp.substring(colon_pos,i);
+                        if(tmp.charAt(i) == sep || tmp.charAt(i) == '\n'){
+                            field = tmp.substring(sep_pos,i);
                             
                             if(counter == 0){  // ELEMENT ID
                                 elements[num_elements] = new IOElement();
@@ -263,11 +264,19 @@ void getInfoFromSD(boolean check_for_elements){
                                 if(!isActuator){
                                     client.print("\"version\":\"");
                                     client.print(field);
-                                    client.print("\"}}");
+                                    //client.print("\"}}");
+                                    client.print("\",");
+                                }
+                            }
+                            else if(counter == 11){  // SENSOR FUNCTION
+                                if(!isActuator){
+                                    client.print("\"convfunc\":\"");
+                                    client.print(field);
+                                    client.print("\"}}");                                    
                                 }
                             }
                             counter++;
-                            colon_pos = i+1;
+                            sep_pos = i+1;
                         }
                         field += tmp.charAt(i);                    
                     }
@@ -311,7 +320,7 @@ void setValueToActuator(bool ad, int pin, int value){
     }
 }
 
-void sendDataToAPI(int id_ele, bool check_value_is_changed){
+void sendDataToPZP(int id_ele, bool check_value_is_changed){
     bool senddata = true;
     int val = getValueFromSensor(elements[id_ele]->ad, elements[id_ele]->pin);
     if(check_value_is_changed == true){
@@ -538,18 +547,19 @@ void loop(){
                         }
                         else if(strcmp(cmd,"cfg")==0){
                             String tmp = dat;
-                            int last_colon_pos=0;
+                            char cfg_sep = ':';
+                            int last_sep_pos=0;
                             String s;
-                            int colon_pos = tmp.indexOf(':');
-                            s = tmp.substring(0, colon_pos);                          
-                            last_colon_pos = colon_pos + 1;
-                            colon_pos = tmp.indexOf(':', last_colon_pos);
-                            s = tmp.substring(last_colon_pos, colon_pos);
+                            int sep_pos = tmp.indexOf(cfg_sep);
+                            s = tmp.substring(0, sep_pos);                          
+                            last_sep_pos = sep_pos + 1;
+                            sep_pos = tmp.indexOf(cfg_sep, last_sep_pos);
+                            s = tmp.substring(last_sep_pos, sep_pos);
                             for(int i=0; i<num_elements; i++)
                                 if(strcmp(elements[i]->id, eid) == 0)
                                     elements[i]->rate = s.toInt();                                                    
-                            last_colon_pos = colon_pos + 1;
-                            s = tmp.substring(last_colon_pos);
+                            last_sep_pos = sep_pos + 1;
+                            s = tmp.substring(last_sep_pos);
                             for(int i=0; i<num_elements; i++){
                                 if(strcmp(elements[i]->id, eid) == 0){
                                     if(s.equals("fix"))
@@ -598,10 +608,10 @@ void loop(){
             for(int i=0; i<num_elements; i++){
                 if(elements[i]->active){
                     if(elements[i]->mode == 1 && millis() - elements[i]->lastConnectionTime > elements[i]->rate){
-                        sendDataToAPI(i,0);
+                        sendDataToPZP(i,0);
                     }
                     else if(elements[i]->mode == 0){
-                        sendDataToAPI(i,1);
+                        sendDataToPZP(i,1);
                     }
                 }
             }
