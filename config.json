@@ -29,7 +29,7 @@
 					{
 						"name" : "express",
 						"type" : "ethernet",
-						"port" : "9000"
+						"port" : "1984"
 					}				
 				]
 			},
