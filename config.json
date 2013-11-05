@@ -1,51 +1,56 @@
 {
-	"params" : {
-		"drivers" : [
-			{
-				"name" : "serial_driver",
-				"type" : "serial",
-				"filename" : "serialDriver.js",
-				"interfaces" : [
-					{
-						"name" : "usb1",
-						"type" : "usb",
-						"port" : "/dev/cu.usbmodemfa131",
-						"rate" : 9600
-					},
-					{
-						"name" : "zigbee1",
-						"type" : "zigbee",
-						"port" : "/dev/cu.usbserial-A40105XP",
-						"rate" : 9600
-					}					
-				]
-			},
+    "apiURI": ""
+  , "instances": [{
+            "id": ""
+          , "params": {
+                "drivers" : [
+                    {
+                        "name" : "serial_driver",
+                        "type" : "serial",
+                        "filename" : "serialDriver.js",
+                        "interfaces" : [
+                            {
+                                "name" : "usb1",
+                                "type" : "usb",
+                                "port" : "/dev/cu.usbmodemfa131",
+                                "rate" : 9600
+                            },
+                            {
+                                "name" : "zigbee1",
+                                "type" : "zigbee",
+                                "port" : "/dev/cu.usbserial-A40105XP",
+                                "rate" : 9600
+                            }					
+                        ]
+                    },
 
-			{
-				"name" : "http_driver",
-				"type" : "http",
-				"filename" : "httpDriver.js",
-				"interfaces" : [
-					{
-						"name" : "express",
-						"type" : "ethernet",
-						"port" : "1984"
-					}				
-				]
-			},
+                    {
+                        "name" : "http_driver",
+                        "type" : "http",
+                        "filename" : "httpDriver.js",
+                        "interfaces" : [
+                            {
+                                "name" : "express",
+                                "type" : "ethernet",
+                                "port" : "1984"
+                            }				
+                        ]
+                    },
 
-			{
-				"name" : "fake_driver",
-				"type" : "fake",
-				"filename" : "fakeDriver1.js",
-				"interfaces" : [
-					{
-						"name" : "fake",
-						"type" : "fake",
-						"port" : "fake"
-					}				
-				]
-			}
-		]
-	}
+                    {
+                        "name" : "fake_driver",
+                        "type" : "fake",
+                        "filename" : "fakeDriver1.js",
+                        "interfaces" : [
+                            {
+                                "name" : "fake",
+                                "type" : "fake",
+                                "port" : "fake"
+                            }				
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
 }
