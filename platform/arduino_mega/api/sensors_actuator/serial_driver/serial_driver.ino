@@ -320,7 +320,7 @@ void setup(){
     //pinMode(12,OUTPUT);
     //digitalWrite(12,LOW);
     
-    Serial.begin(9600);
+    Serial.begin(115200);
     
     getInfoFromSD(false);
     
