@@ -10,7 +10,7 @@
 						"name" : "usb1",
 						"type" : "usb",
 						"port" : "/dev/cu.usbmodemfa131",
-						"rate" : 9600
+						"rate" : 115200
 					},
 					{
 						"name" : "zigbee1",
