@@ -314,12 +314,6 @@ void err_SD(){
 }
 
 void setup(){
-
-    pinMode(11,OUTPUT);
-    digitalWrite(11,HIGH);
-    //pinMode(12,OUTPUT);
-    //digitalWrite(12,LOW);
-    
     Serial.begin(115200);
     
     getInfoFromSD(false);
