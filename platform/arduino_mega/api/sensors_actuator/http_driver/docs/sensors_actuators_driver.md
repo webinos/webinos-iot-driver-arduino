@@ -33,7 +33,7 @@ GET /newboard?jsondata={"id":"00001","protocol":"HTTP","name":"ARDUINO_MEGA","ip
 
 Once the connection has been estabilished, if the board was successfully registered, the board sends back to the PZP an ack message with a payload containing the json string *{"ack":"newboard"}*.
 
-![hello](https://raw.github.com/glatorre/Webinos-Platform/WP-671/webinos/platform/arduino/arduino_mega/api/sensors_actuators_driver/docs/figures/hello.png)
+![hello](/platform/arduino/arduino_mega/api/sensors_actuators_driver/docs/figures/hello.png)
 
 The PZP driver can send requests to board server (listening at board_ip:board_port) using the following parameters:
 
