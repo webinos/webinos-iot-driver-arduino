@@ -1,4 +1,4 @@
-{ "name": "webinos-driver-arduino"
+{ "name": "webinos-iot-driver-arduino"
 , "publishConfig": { "tag": "alpha" }
 , "description": "Arduino Drivers"
 , "keywords": [ "webinos", "arduino", "driver"]
@@ -7,7 +7,7 @@
 , "author": "Giuseppe La Torre <giuseppe.latorre@dieei.unict.it>"
 , "repository":
   { "type": "git"
-  , "url": "https://github.com/webinos/webinos-driver-arduino.git"
+  , "url": "https://github.com/webinos/webinos-iot-driver-arduino.git"
   }
 , "bugs":
   { "email": "webinos-wp4-ml@fokus.fraunhofer.de"
@@ -18,7 +18,8 @@
 , "main": "./lib/driverHandle.js"
 , "dependencies":
   {
-    "sandbox": "git://github.com/glatorre/sandbox.git"
+    "sandbox": "git://github.com/glatorre/sandbox.git",
+    "serialport": "1.1.3"
   }
 , "bundleDependencies":
   [

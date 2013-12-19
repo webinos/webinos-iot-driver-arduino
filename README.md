@@ -1,4 +1,4 @@
-webinos-driver-arduino
+webinos-iot-driver-arduino
 ===================
 
 ###How to use HTTP driver with Arduino Mega board
@@ -12,7 +12,7 @@ webinos-driver-arduino
 4) Connect arduino to the PZP through ethernet cable.
 
 P.S.
-Be sure that your PZP's IP is the same as the one in config.txt. You can refer to the [documentation page](https://github.com/webinos/webinos-driver-arduino/blob/master/platform/arduino_mega/api/sensors_actuator/http_driver/docs/sensors_actuators_driver.md) in order to set the config.txt file.
+Be sure that your PZP's IP is the same as the one in config.txt. You can refer to the [documentation page](https://github.com/webinos/webinos-iot-driver-arduino/blob/master/platform/arduino_mega/api/sensors_actuator/http_driver/docs/sensors_actuators_driver.md) in order to set the config.txt file.
 
 
 
