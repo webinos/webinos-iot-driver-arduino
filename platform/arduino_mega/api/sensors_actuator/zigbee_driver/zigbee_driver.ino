@@ -72,7 +72,7 @@ void getInfoFromSD(boolean check_for_elements){
                     ignore = true;
                 }
                 else
-                    if(c!=' ' && c !='\t')
+                    if(c!=' ' && c !='\t' && c!='\r')
                         s += c;
             }
           
