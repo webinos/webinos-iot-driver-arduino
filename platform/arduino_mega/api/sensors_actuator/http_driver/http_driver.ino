@@ -22,6 +22,7 @@
 #include <SD.h>
 #include "Util.h"
 
+
 #define  CONFIG_FILE          "config.txt"
 #define  DFLT_BOARD_IP        192,168,1,120
 #define  DFLT_BOARD_PORT      80
@@ -42,7 +43,6 @@ typedef struct {
 } IOElement;
 
 IOElement * elements[MAX_NUM_ELEMENTS];
-
 byte MAC[] = {  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xAC };
 byte* mac;
 byte* pzp_ip;
@@ -59,239 +59,293 @@ boolean boardconnected = false;
 boolean sd_ready = false;
 boolean elements_ready = false;
 char sep = '$';
+char* elementsBuffer;
+unsigned long lastAliveReplyTime = 0;
+int pzpTimeout = 5000;
 
 void sayHello(){
-    client.print("GET /newboard?jsondata={\"id\":\"");
+    client.print(F("GET /newboard?jsondata={\"id\":\""));
     client.print(board_id);
-    client.print("\",\"protocol\":\"HTTP\",\"name\":\"ARDUINO_MEGA\",\"ip\":\"");
+    client.print(F("\",\"protocol\":\"HTTP\",\"name\":\"ARDUINO_MEGA\",\"ip\":\""));
     client.print(Ethernet.localIP());
-    client.println("\",\"port\":\"80\"} HTTP/1.0");
+    client.println(F("\",\"port\":\"80\"} HTTP/1.0"));
 }
 
-void getInfoFromSD(boolean check_for_elements){
-    boolean first_element = true;
-    boolean ignore = false;
-    
-    // see if the card is present and can be initialized:
+
+bool startsWith(char * vet, char str[]){
+  for(int i=0; i<strlen(str);i++){
+    if(vet[i] != str[i])
+      return false;
+  }
+  return true;
+}
+
+char * substr1(char * str, int start){
+  int len = strlen(str);
+  char* s = (char*) malloc(sizeof(char)*(len-start+1));
+  for(int j=0,i=start; i<len; i++,j++)
+    s[j] = str[i];
+  s[len-start] = '\0';
+  return s;
+}
+
+char * substr2(char * str, int from, int to){
+  int len = to-from+1;
+  char* s = (char*) malloc(sizeof(char)*(len+1));
+  for(int j=0,i=from; i<=to; i++,j++)
+    s[j] = str[i];
+  s[len] = '\0';
+  return s;
+}
+
+char* readFromSD(){
+    pinMode(chipSelect, OUTPUT);
     if (!sd_ready && !SD.begin(chipSelect)) {
-        Serial.println("Card failed, or not present");
-        // don't do anything more:
-        return;
+      Serial.println(F("Card failed, or not present"));
+      // don't do anything more:
     }
     else{
-        Serial.println("card initialized.");
-        sd_ready = true;
+      Serial.println(F("card initialized."));
+      sd_ready = true;
     }
-    
-    // open the file. note that only one file can be open at a time,
-    // so you have to close this one before opening another.
     File configFile = SD.open(CONFIG_FILE);
     if (configFile) {
-        String s;
+      String s;
+      while (configFile.available()) {
+        s += (char)configFile.read();
+      }
+
+      char*buf = (char*) malloc(sizeof(char)*(s.length()+1));
+      strcpy(buf, s.c_str());
+      buf[s.length()] = '\0';
+      configFile.close();
+      return buf;
+    }
+    else {
+      Serial.println(F("error opening configuration file"));
+      configFile.close();
+      return NULL;
+    }
+}
+
+void getInfoFromSD(){
+    boolean first_element = true;
+    boolean ignore = false;
+    char * sd_buf = readFromSD();
+    if (sd_buf != NULL) {
+        char * elementsBuf = (char*) malloc(sizeof(char)*(1500));
+        int buf_size = 100;
+        int count = 0;
+        char* s = (char*) malloc(sizeof(char)*(buf_size+1));
         char c;
         
-        if(check_for_elements && !client.connected())
-            client = server.available();
-        
-        while (configFile.available()) {
-            c = configFile.read();
+        client.stop();
+
+        if(!client.connected())
+          client = server.available();
+
+        for(int y=0;y<strlen(sd_buf);y++){
+            c = sd_buf[y];   
             if(c == '#' ){
                 ignore = true;
-                s="";
+                count = 0;
+                s[count] = '\0';
             }
             else if(!ignore){
-                if(s.length()==7 && !s.startsWith("BOARDID") && !s.startsWith("MACADDR") && !s.startsWith("BRDIPAD") && !s.startsWith("BRDPORT") && !s.startsWith("PZPIPAD") && !s.startsWith("PZPPORT") && !s.startsWith("ELEMENT")){
-                    s = "";
+                  if(strlen(s)==7 && !startsWith(s,"BOARDID") && !startsWith(s,"MACADDR") && !startsWith(s,"BRDIPAD") && !startsWith(s,"BRDPORT") && !startsWith(s,"PZPIPAD") && !startsWith(s,"PZPPORT") && !startsWith(s,"ELEMENT")){
+                    count = 0;
+                    s[count] = '\0';
                     ignore = true;
                 }
                 else
                     if(c!=' ' && c !='\t' && c!='\r')
-                        s += c;
+                        s[count++] = c;
+                        s[count] = '\0';
             }
           
             if(c == '\n'){
                 ignore = false;
-                if(!check_for_elements && s.startsWith("BOARDID")){  // BOARD ID
-                    String tmp = s.substring(7);
-                    char * buf = (char*) malloc(sizeof(char)*tmp.length());
-                    for(int i=0; i<tmp.length();i++)
-                        buf[i] = tmp.charAt(i);
-                    buf[tmp.length()-1] = '\0';
+                if(startsWith(s,"BOARDID")){  // BOARD ID
+                    char * tmp = substr1(s,7);
+                    char * buf = (char*) malloc(sizeof(char)*strlen(tmp));
+                    for(int i=0; i<strlen(tmp);i++)
+                        buf[i] = tmp[i];
+                    buf[strlen(tmp)-1] = '\0';
                     board_id = buf;
                 }
-                else if(!check_for_elements && s.startsWith("BRDIPAD")){  // BOARD IP ADDRESS
-                    board_ip = strIp2byteVect(s.substring(7));
+                else if(startsWith(s,"BRDIPAD")){  // BOARD IP ADDRESS
+                    board_ip = strIp2byteVect(substr1(s,7));
                 }
-                else if(!check_for_elements && s.startsWith("BRDPORT")){  // BOARD PORT 
-                    board_port = s.substring(7).toInt();
+                else if(startsWith(s,"BRDPORT")){  // BOARD PORT 
+                    board_port = atoi(substr1(s,7));
                 }
-                else if(!check_for_elements && s.startsWith("PZPIPAD")){  // PZP IP ADDRESS
-                    pzp_ip = strIp2byteVect(s.substring(7));
+                else if(startsWith(s,"PZPIPAD")){  // PZP IP ADDRESS
+                    pzp_ip = strIp2byteVect(substr1(s,7));
                 }
-                else if(!check_for_elements && s.startsWith("PZPPORT")){  // PZP PORT
-                    pzp_port = s.substring(7).toInt();
+                else if(startsWith(s, "PZPPORT")){  // PZP PORT
+                    pzp_port = atoi(substr1(s,7));
                 }
-                else if(!check_for_elements && s.startsWith("MACADDR")){  // MAC ADDRESS
-                    String tmp = s.substring(7);
-                    mac = strMac2byteVect(tmp);
+                else if(startsWith(s, "MACADDR")){  // MAC ADDRESS
+                    mac = strMac2byteVect(substr1(s,7));
                 }
-                else if(check_for_elements && num_elements < MAX_NUM_ELEMENTS && s.startsWith("ELEMENT")){
-                    String tmp = s.substring(7);
-                    String field;
+                else if(num_elements < MAX_NUM_ELEMENTS && startsWith(s,"ELEMENT")){
+                    char * tmp = substr1(s,7);
+                    char * field;
                     int counter=0;
                     int sep_pos = 0;
                     if(first_element){
                         first_element=false;
-                        client.print("[");
+                        strcpy(elementsBuf,"[");
                     }
                     else{
-                        client.print(",");
+                        strcat(elementsBuf,",");
                     }
                     
                     bool isActuator = false;
-                    for(int i=0; i<tmp.length(); i++){
-                        if(tmp.charAt(i) == sep || tmp.charAt(i) == '\n'){
-                            field = tmp.substring(sep_pos,i);
+                      for(int i=0; i<strlen(tmp); i++){
+                          if(tmp[i] == sep || tmp[i] == '\n'){
+                            field = substr2(tmp, sep_pos,i-1);
                             
                             if(counter == 0){  // ELEMENT ID
                                 elements[num_elements] = new IOElement();
-                                client.print("{\"id\":\"");
-                                client.print(board_id);
-                                client.print("_");
-                                client.print(field);
-                                client.print("\", \"element\":{");
-                                
-                                int len = strlen(board_id) + 1 + field.length() +1 ;  // BOARD_ID + _ + id + \0
+                                strcat(elementsBuf, "{\"id\":\"");
+                                strcat(elementsBuf, board_id);
+                                strcat(elementsBuf,"_");
+                                strcat(elementsBuf,field);
+                                strcat(elementsBuf,"\", \"element\":{");
+
+                                int len = strlen(board_id) + 1 + strlen(field) +1 ;
                                 char * buf = (char*) malloc(sizeof(char)*(len));
                                 strcpy(buf,board_id);
                                 strcat(buf,"_");
-                                for(int i=strlen(board_id)+1,j=0; i<len;i++,j++)
-                                    buf[i] = field.charAt(j);
+                                for(int i=strlen(board_id)+1,j=0; i<len;i++,j++){
+                                    buf[i] = field[j];
+                                }
                                 buf[len] = '\0';                                
                                 elements[num_elements]->id = buf;
                                 elements[num_elements]->active = DFLT_ELEMENT_ACTIVE;
                                 elements[num_elements]->rate = DFLT_ELEMENT_RATE;
                             }
                             else if(counter == 1){  // ELEMENT SA
-                                client.print("\"sa\":\"");
-                                client.print(field);
-                                client.print("\",");
-                                elements[num_elements]->sa = !field.equals("0");
+                                strcat(elementsBuf, "\"sa\":\"");
+                                strcat(elementsBuf,field);
+                                strcat(elementsBuf,"\",");
+                                elements[num_elements]->sa = field[0]=='0' ? 0 : 1;
                                 if(elements[num_elements]->sa == 1)
                                     isActuator = 1;
                             }
                             else if(counter == 2){  // ELEMENT AD
-                                elements[num_elements]->ad = !field.equals("0");
+                                elements[num_elements]->ad = field[0]=='0' ? 0 : 1;
                             }
                             else if(counter == 3){  // ELEMENT PIN
-                                int pin = field.toInt();
+                                int pin = atoi(field);
                                 elements[num_elements]->pin = pin;
-                                Serial.print("Set pin ");
-                                Serial.print(pin);
-                                Serial.print(" mode = ");
                                 if(elements[num_elements]->ad == 0){
                                     pinMode(pin,INPUT);
-                                    Serial.println("INPUT");
                                 }
                                 else{
                                     pinMode(pin,OUTPUT);
-                                    Serial.println("OUTPUT");
                                 }
                             }
                             else if(counter == 4){
                                 if(isActuator){  // ACTUATOR TYPE
-                                    client.print("\"type\":\"");
-                                    client.print(field);
-                                    client.print("\",");
+                                    strcat(elementsBuf, "\"type\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\",");
                                 }
                                 else{ // SENSOR MAXIMUMRANGE
-                                    client.print("\"maximumRange\":\"");
-                                    client.print(field);
-                                    client.print("\",");
+                                    strcat(elementsBuf,"\"maximumRange\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\",");
                                 }
                             }
                             else if(counter == 5){  
                                 if(isActuator){  // ACTUATOR RANGE
-                                    client.print("\"range\":\"");
-                                    client.print(field);
-                                    client.print("\",");
+                                    strcat(elementsBuf,"\"range\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\",");
                                 }
                                 else{ // SENSOR MINDELAY
-                                    client.print("\"minDelay\":\"");
-                                    client.print(field);
-                                    client.print("\",");
+                                    strcat(elementsBuf,"\"minDelay\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\",");
                                 }
                             }
                             else if(counter == 6){
                                 if(isActuator){ // ACTUATOR VENDOR 
-                                    client.print("\"vendor\":\"");
-                                    client.print(field);
-                                    client.print("\",");
+                                    strcat(elementsBuf,"\"vendor\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\",");
                                 }
                                 else{ // SENSOR POWER
-                                    client.print("\"power\":\"");
-                                    client.print(field);
-                                    client.print("\",");
+                                    strcat(elementsBuf,"\"power\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\",");
                                 }
                             }
                             else if(counter == 7){
                                 if(isActuator){ // ACTUATOR VERSION
-                                    client.print("\"version\":\"");
-                                    client.print(field);
-                                    client.print("\"}}");
+                                    strcat(elementsBuf,"\"version\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\"}}");
                                 }
                                 else{ // SENSOR RESOLUTION
-                                    client.print("\"resolution\":\"");
-                                    client.print(field);
-                                    client.print("\",");
+                                    strcat(elementsBuf,"\"resolution\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\",");
                                 }
                             }
                             else if(counter == 8){
                                 if(!isActuator){ // SENSOR TYPE
-                                    client.print("\"type\":\"");
-                                    client.print(field);
-                                    client.print("\",");
+                                    strcat(elementsBuf,"\"type\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\",");
                                 }
                             }
                             else if(counter == 9){  // SENSOR VENDOR
                                 if(!isActuator){
-                                    client.print("\"vendor\":\"");
-                                    client.print(field);
-                                    client.print("\",");
+                                    strcat(elementsBuf,"\"vendor\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\",");
                                 }
                             }
                             else if(counter == 10){  // SENSOR VERSION
                                 if(!isActuator){
-                                    client.print("\"version\":\"");
-                                    client.print(field);
-                                    //client.print("\"}}");
-                                    client.print("\",");
+                                    strcat(elementsBuf,"\"version\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\",");
                                 }
                             }
                             else if(counter == 11){  // SENSOR FUNCTION
                                 if(!isActuator){
-                                    client.print("\"convfunc\":\"");
-                                    client.print(field);
-                                    client.print("\"}}");                                    
+                                    strcat(elementsBuf,"\"convfunc\":\"");
+                                    strcat(elementsBuf,field);
+                                    strcat(elementsBuf,"\"}}");                                    
                                 }
                             }
                             counter++;
                             sep_pos = i+1;
                         }
-                        field += tmp.charAt(i);                    
+                        field += tmp[i];
                     }
                     num_elements++;
                 }
-                s = "";
+                count = 0;
+                s[count] = '\0';
             }
         }
-        if(check_for_elements){
-              client.print("]");
-        }
-        configFile.close();
+        
+        strcat(elementsBuf,"]\0");
+        
+        free(s);
+        free(sd_buf);
+        elementsBuffer = (char*) malloc(strlen(elementsBuf+1));
+        strcpy(elementsBuffer, elementsBuf);
+        elementsBuffer[strlen(elementsBuf)] = '\0';
+        free(elementsBuf);
     }
     else {
-        Serial.println("error opening configuration file");
+        Serial.println(F("error opening configuration file"));   
     }
 }
 
@@ -308,11 +362,9 @@ int getValueFromSensor(bool ad, int pin){
 
 void setValueToActuator(bool ad, int pin, int value){
     if(ad == 0){ //analog actuator
-        Serial.println("Analog actuator");
         analogWrite(pin, value);
     }
     else{ //digital actuator
-        Serial.println("Digital actuator");
         if(value == 0)
             digitalWrite(pin,LOW);
         else if(value == 1)
@@ -332,11 +384,6 @@ void sendDataToPZP(int id_ele, bool check_value_is_changed){
     client.stop();
     
     if (senddata && client.connect(pzp_ip, pzp_port)) {
-//        Serial.println(val);
-//        Serial.println(elements[id_ele]->lastValue);
-//        Serial.print("Send data id : ");
-//        Serial.println(id_ele);
-//        Serial.println(elements[id_ele]->rate);
         client.print("POST /sensor?id=");
         client.print(elements[id_ele]->id);
         client.print("&data=");
@@ -350,6 +397,7 @@ void sendDataToPZP(int id_ele, bool check_value_is_changed){
     elements[id_ele]->lastValue = val;
 }
 
+
 void err_SD(){
     digitalWrite(13,HIGH);
     delay(800);
@@ -361,26 +409,27 @@ void err_SD(){
     delay(1000);
 }
 
+
 void setup(){
     Serial.begin(9600);
     pinMode(13, OUTPUT);
-    getInfoFromSD(false);
+    sd_ready = false;
+    Serial.println("Start");
+    //sd_buf = readFromSD();
+    getInfoFromSD();
     
     while(board_id == NULL){
-         Serial.println("Please disconnect and reconnect the board");
-         err_SD();
-         getInfoFromSD(false);
+        Serial.println(F("Please disconnect and reconnect the board"));
+        err_SD();
+        delay(1000);
+        //sd_buf = readFromSD();
+        getInfoFromSD();
     }
     
     if(mac == NULL){
-        Serial.println("Using default MAC");
+        Serial.println(F("Using default MAC"));
         mac = MAC;
-    }
-
-//    if(board_ip != NULL)
-//        Ethernet.begin(mac, board_ip);
-//    else
-//        Ethernet.begin(mac , BOARD_IP);    
+    }  
     
     if(board_ip == NULL){  // board ip is not defined in the configuration file
         Serial.println("Trying to get an IP address using DHCP");
@@ -398,7 +447,9 @@ void setup(){
 
 void loop(){
     if(!boardconnected){
-        Serial.println("Try connecting to PZP");
+        Serial.println(F("Try connecting to PZP"));
+        Serial.println(pzp_port);
+
         if (client.connect(pzp_ip, pzp_port)) {
             sayHello();
             client.println();
@@ -417,11 +468,14 @@ void loop(){
                         vet[i-1] = '\0';
                         String s = vet;
                         if(s == "{\"ack\":\"newboard\"}"){
-                            Serial.println("new board");
+                            Serial.println(F("new board"));
                             boardconnected=true;
+                            for(int i=0; i<num_elements; i++){
+                                elements[i]->active = false;
+                            }
                         }
                         else{
-                            Serial.println("Connection Error");
+                            Serial.println(F("Connection Error"));
                         }            
                         break;
                     }
@@ -437,7 +491,7 @@ void loop(){
             client.stop();
         }
         else {
-            Serial.println("PZP unavailable");
+            Serial.println(F("PZP unavailable"));
             delay(2000);
         }
     }
@@ -453,7 +507,7 @@ void loop(){
             int i=0,j=0,z=0;
             bool finish = false;
 
-            while (client.connected()) {        
+            while (client.connected()) {    
                 if (client.available()) {
                     char c = client.read();               
                     if(counter>10 && counter<14)
@@ -473,9 +527,9 @@ void loop(){
                         Serial.println(cmd);
                         Serial.println(id);
                         Serial.println(dat);
-                        client.println("HTTP/1.1 200 OK");
-                        client.println("Content-Type: application/json");
-                        client.println("Connnection: keep-alive");
+                        client.println(F("HTTP/1.1 200 OK"));
+                        client.println(F("Content-Type: application/json"));
+                        client.println(F("Connnection: keep-alive"));
                         client.println();
                     
                         int len = strlen(board_id) + 1 + strlen(id);  // BOARD_ID + _ + id
@@ -484,15 +538,15 @@ void loop(){
                         strcat(eid,"_");
                         strcat(eid,id);
                         strcat(eid,'\0');
-                            
+  
                         if(strcmp(cmd,"ele")==0){
                             client.print("{\"id\":\"");
                             client.print(board_id);
                             client.print("\",\"cmd\":\"ele\",\"elements\":");
-                            getInfoFromSD(true);
-                            //client.print(getInfoFromSD(true));
+                            client.print(elementsBuffer);
                             client.println("}");
                             elements_ready = true;
+                            lastAliveReplyTime = millis();
                         }
                         else if(strcmp(cmd,"get")==0){
                             int pin = -1;
@@ -505,7 +559,6 @@ void loop(){
                                 }
                             }
                             int value = getValueFromSensor(ad,pin);
-                            //int value = analogRead(pin);
                             client.print("{\"cmd\":\"get\",\"id\":\"");
                             client.print(board_id);
                             client.print("_");
@@ -519,8 +572,8 @@ void loop(){
                                 client.print("{\"cmd\":\"str\",");                                  
                                 for(int i=0; i<num_elements; i++){
                                     if(strcmp(elements[i]->id, eid) == 0){
-                                        Serial.print("starting ");
-                                        Serial.println(elements[i]->id);
+//                                        Serial.print("starting ");
+//                                        Serial.println(elements[i]->id);
                                         elements[i]->active = true;
                                         if(strcmp(dat,"fix")==0){
                                             elements[i]->mode = 1;
@@ -535,14 +588,21 @@ void loop(){
                                 client.print("{\"cmd\":\"stp\",");
                                 for(int i=0; i<num_elements; i++){
                                     if(strcmp(elements[i]->id, eid) == 0){
-                                        Serial.print("stopping ");
-                                        Serial.println(elements[i]->id);
+//                                        Serial.print("stopping ");
+//                                        Serial.println(elements[i]->id);
                                         elements[i]->active = false;
                                     }
                                 }
                             }
                             client.print("\"id\":\"");
                             client.print(eid);
+                            client.println("\"}");
+                        }
+                        else if(strcmp(cmd,"alv")==0){
+                            lastAliveReplyTime = millis();
+                            Serial.println(lastAliveReplyTime);
+                            client.print("{\"cmd\":\"alv\",\"id\":\"");
+                            client.print(board_id);
                             client.println("\"}");
                         }
                         else if(strcmp(cmd,"cfg")==0){
@@ -616,5 +676,14 @@ void loop(){
                 }
             }
         }
+    }
+
+    if(elements_ready){
+      if(millis() - lastAliveReplyTime > pzpTimeout){
+        Serial.println(F("Timeout exceeded"));
+        boardconnected = false;
+        elements_ready = false;
+        client.stop();
+      }
     }
 }
