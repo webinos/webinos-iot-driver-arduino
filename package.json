@@ -19,7 +19,8 @@
 , "dependencies":
   {
     "sandbox": "git://github.com/glatorre/sandbox.git",
-    "serialport": "1.2.x"
+    "express": "x.x.x",
+    "serialport": "https://github.com/glatorre/node-serialport/tarball/handles_usb_disconnection"
   }
 , "bundleDependencies":
   [
